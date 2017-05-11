@@ -53,7 +53,7 @@ vector<vector<int>> readPajek(string fn) {
 
 #define NO_VALUE -1
 /*
-calculates distances between every pair of nodes in the given graph.
+calculates distances between every pair of vertices in the given graph.
 */
 vector<vector<int>> distances(const vector<vector<int>>& graph) {
 	vector<vector<int>> res;
@@ -80,6 +80,8 @@ vector<vector<int>> distances(const vector<vector<int>>& graph) {
 
 /*
 Grow a convex subgraph by specified vertex. Adds more vertices to make new subgraph connected.
+
+Than additional vertices are added to subgraph until its convexity is achieved. This is performed in O(ktot*m) time, where m is number of vertices in the subgraph and ktot is total degree of the vertices that are added.
 
 For each added vertex checks its neighbors if they lie on any shortest part between new wertex and vertices
 in existing subgraph. Adds such vertices to subgraph and repeats check for their neighbors.
@@ -118,7 +120,18 @@ vector<int> convexGrowthTriangleIneq(vector<vector<int>>& graph, vector<vector<i
 
 	return insertions;
 }
+/*
+Randomly grows a convex subgraph in given graph.
 
+Initial vertex is chosen at random from all vertices in given network.
+
+In each step one vertex is chosen to be added to subgraph. It is picked randomly from vertices that have at least one neighbor in existing subgraph.
+Chance to select particular vertex is proportional to number of neighbors that are contained subgraph.
+Than convexGrowthTriangleIneq is called for new vertex.
+Growing subgraph untill it contains all vertices of a network takes O(n*m) time, where n is number of vertices and m number of links in the network.
+
+returns vector of integers. At i-th place it contains number of vertices that were added in i-th step of convex growth.
+*/
 vector<int> convexGrowth(vector<vector<int>>& graph, vector<vector<int>>& distances) {
 	unordered_set<int> subGraph;
 	vector<int> neighbors;
