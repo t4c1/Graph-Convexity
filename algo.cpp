@@ -13,6 +13,23 @@
 
 using namespace std;
 
+class SubGraph {
+public:
+	vector<char> present;
+	vector<int> list;
+	SubGraph(vector<vector<int>>& graph) :
+		present(vector<char>(graph.size()))
+	{}
+	inline bool insert(int vertex) {
+		bool inserted = !present[vertex];
+		if (inserted) {
+			present[vertex] = 1;
+			list.push_back(vertex);
+		}
+		return inserted;
+	}
+};
+
 /*
 reads a graph from a pajek (.net) file.
 fn: path to file.
@@ -88,7 +105,7 @@ in existing subgraph. Adds such vertices to subgraph and repeats check for their
 
 Returns vector with all aded vertices (including initial one) and updates SubGraph with new vertices.
 */
-vector<int> convexGrowthTriangleIneq(vector<vector<int>>& graph, vector<vector<int>>& distances, unordered_set<int>& subGraph, int newVertex) {
+vector<int> convexGrowthTriangleIneq(vector<vector<int>>& graph, vector<vector<int>>& distances, SubGraph& subGraph, int newVertex) {
 	deque<int> todo;
 	todo.push_back(newVertex);
 	vector<char> alreadyChecked(graph.size());//elements initialized to 0
@@ -101,9 +118,9 @@ vector<int> convexGrowthTriangleIneq(vector<vector<int>>& graph, vector<vector<i
 		int current = todo.front();
 		todo.pop_front();
 		for (int neighbor : graph[current]) {
-			if (alreadyChecked[neighbor]!=current && !subGraph.count(neighbor)) {
+			if (alreadyChecked[neighbor]!=current && !subGraph.present[neighbor]) {
 				alreadyChecked[neighbor] = current;
-				for (int endVertex : subGraph) {
+				for (int endVertex : subGraph.list) {
 					if (distances[current][endVertex] >= distances[current][neighbor] + distances[neighbor][endVertex]) {
 						todo.push_back(neighbor);
 						insertions.push_back(neighbor);
@@ -136,12 +153,12 @@ untill it contains whole graph computing distances and using convexGrowthTriangl
 
 Returns vector with all added vertices (including initial one) and updates SubGraph with new vertices.
 */
-vector<int> convexGrowthTwoSearch(vector<vector<int>>& graph, unordered_set<int>& subGraph, int newVertex) {
-	if (subGraph.empty()) {
+vector<int> convexGrowthTwoSearch(vector<vector<int>>& graph, SubGraph& subGraph, int newVertex) {
+	if (subGraph.list.empty()) {
 		subGraph.insert(newVertex);
 		return{ newVertex };
 	}
-	unordered_set<int> toFind = subGraph;
+	unordered_set<int> toFind(subGraph.list.begin(), subGraph.list.end());
 	vector<int> dists(graph.size(),NO_VALUE);
 	dists[newVertex] = 0;
 	deque<int> todo;
@@ -169,13 +186,13 @@ vector<int> convexGrowthTwoSearch(vector<vector<int>>& graph, unordered_set<int>
 			}
 		}
 	}
-	todo = deque<int>(subGraph.begin(), subGraph.end());
+	todo = deque<int>(subGraph.list.begin(), subGraph.list.end());
 	while (!todo.empty()) {
 		int current = todo.front();
 		todo.pop_front();
 		if (dists[current] != NO_VALUE) { //reuse data structure
 			dists[current] = NO_VALUE;
-			if (subGraph.insert(current).second) {//if current was not yet in subGraph
+			if (subGraph.insert(current)) {//if current was not yet in subGraph
 				res.push_back(current);
 			}
 			for (int neighbor : parents[current]) {
@@ -210,7 +227,7 @@ Growing subgraph untill it contains all vertices of a network takes O(n*m) time,
 returns vector of integers. At i-th place it contains number of vertices that were added in i-th step of convex growth.
 */
 vector<int> convexGrowth(vector<vector<int>>& graph, vector<vector<int>>& distances) {
-	unordered_set<int> subGraph;
+	SubGraph subGraph(graph);
 	vector<int> neighbors;
 	std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
 	//std::default_random_engine generator(334);
@@ -225,12 +242,12 @@ vector<int> convexGrowth(vector<vector<int>>& graph, vector<vector<int>>& distan
 		//vector<int> insertions = convexGrowthTwoSearch(graph, subGraph, newVertex);
 
 		neighbors.clear();  // update neighbors of the subgraph
-		for (int i : subGraph) {
+		for (int i : subGraph.list) {
 			for (int neighbor : graph[i]) {
-				if (!subGraph.count(neighbor)) {
+				if (!subGraph.present[neighbor]) {
 					neighbors.push_back(neighbor);
 #ifdef _DEBUG //if debugging check that result is correct
-					for (int j : subGraph) {
+					for (int j : subGraph.list) {
 						assert(distances[i][j] < distances[i][neighbor] + distances[neighbor][j]);
 					}
 #endif
