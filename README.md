@@ -7,9 +7,9 @@ This repository contains an efficient implementation of an algorithm for growing
 reads a graph from a pajek (.net) file.
 fn: path to file.
 
-returns graph (in adjecency list format)
+returns network (in adjecency list format)
 
-Only works for undirected networks (directed ones will get some duplicated edges - from two-way connections)!
+Reads network as undirected, even if it is saved as directed. Any multiedges are reduced to single edges.
 
 ### vector<vector<int>> distances(const vector<vector<int>>& graph)
 calculates distances between every pair of vertices in the given graph.
