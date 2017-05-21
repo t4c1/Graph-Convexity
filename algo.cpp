@@ -120,6 +120,83 @@ vector<int> convexGrowthTriangleIneq(vector<vector<int>>& graph, vector<vector<i
 
 	return insertions;
 }
+
+/*
+Grow a convex subgraph by specified vertex. Adds more vertices to make new subgraph connected.
+
+Than additional vertices are added to subgraph until its convexity is achieved. This is performed in O(ktot*m) time, where m is number of vertices in the subgraph and ktot is total degree of the vertices that are added.
+
+For each added vertex performs a breadth first search starting at new vertex. Last discovered vertex of the subgraph determines maximum search depth - 
+search stops after there are no more vertices on equal distance. During search constructs directed acyclyc graph of all shortest paths between new vertex and all discovered vertices.
+
+Than second breadth first search is run on this graph of shortest paths starting on all vertices of the subgraph. All visited vertices are added to subgraph. Algorithm is then repeated for each added vertex.
+
+This function is faster than convexGrowthTriangleIneq only if distances are not precomputed and final size of subgraph is much smaller than original graph. If subgraph is grown
+untill it contains whole graph computing distances and using convexGrowthTriangleIneq is faster.
+
+Returns vector with all added vertices (including initial one) and updates SubGraph with new vertices.
+*/
+vector<int> convexGrowthTwoSearch(vector<vector<int>>& graph, unordered_set<int>& subGraph, int newVertex) {
+	if (subGraph.empty()) {
+		subGraph.insert(newVertex);
+		return{ newVertex };
+	}
+	unordered_set<int> toFind = subGraph;
+	vector<int> dists(graph.size(),NO_VALUE);
+	dists[newVertex] = 0;
+	deque<int> todo;
+	todo.push_back(newVertex);
+	vector<vector<int>> parents(graph.size());
+	vector<int> res;
+	int stopDistance = INT_MAX;
+	while (!todo.empty()) {
+		int current = todo.front();
+		todo.pop_front();
+		if (dists[current]>stopDistance) {
+			break;
+		}
+		for (int neighbor : graph[current]) {
+			if (dists[neighbor]==-1) {
+				dists[neighbor] = dists[current] + 1;
+				todo.push_back(neighbor);
+			}
+			if (dists[neighbor] == dists[current] + 1) {
+				toFind.erase(neighbor);
+				parents[neighbor].push_back(current);
+				if (toFind.empty()) {
+					stopDistance = dists[current];
+				}
+			}
+		}
+	}
+	todo = deque<int>(subGraph.begin(), subGraph.end());
+	while (!todo.empty()) {
+		int current = todo.front();
+		todo.pop_front();
+		if (dists[current] != NO_VALUE) { //reuse data structure
+			dists[current] = NO_VALUE;
+			if (subGraph.insert(current).second) {//if current was not yet in subGraph
+				res.push_back(current);
+			}
+			for (int neighbor : parents[current]) {
+				todo.push_back(neighbor); //TODO perf - only if neighbor not in subGraph and not in todo
+			}
+		}
+	}
+	auto tmpRes = res;
+	for (int added : tmpRes) {
+		if (added != newVertex) {
+			vector<int> res2=convexGrowthTwoSearch(graph, subGraph, added);
+			for (int added2 : res2) {
+				if (added2 != added) {
+					res.push_back(added);
+				}
+			}
+		}
+	}
+	return res;
+}
+
 /*
 Randomly grows a convex subgraph in given graph.
 
@@ -145,6 +222,7 @@ vector<int> convexGrowth(vector<vector<int>>& graph, vector<vector<int>>& distan
 		std::uniform_int_distribution<int> distribution(0, neighbors.size()-1);
 		int newVertex = neighbors[distribution(generator)];
 		vector<int> insertions = convexGrowthTriangleIneq(graph, distances, subGraph, newVertex);
+		//vector<int> insertions = convexGrowthTwoSearch(graph, subGraph, newVertex);
 
 		neighbors.clear();  // update neighbors of the subgraph
 		for (int i : subGraph) {
@@ -166,13 +244,18 @@ vector<int> convexGrowth(vector<vector<int>>& graph, vector<vector<int>>& distan
 
 
 int main() {
-	auto g = readPajek(R"(F:\Users\Tadej\Documents\fax_dn\INA\circles_lcc.net)");
+	string fn = R"(C:\Users\tadej\PycharmProjects\INA\circles_lcc.net)";
+	//string fn = R"(F:\Users\Tadej\Documents\fax_dn\INA\circles_lcc.net)";
+	auto g = readPajek(fn);
 	cout << g.size() << endl;
-	auto dists = distances(g);
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-	auto res = convexGrowth(g, dists);
+	auto dists = distances(g);
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-	cout << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000. / 1000. << " s" << endl;
+	cout << "dists " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000. / 1000. << " s" << endl;
+	begin = std::chrono::steady_clock::now();
+	auto res = convexGrowth(g, dists);
+	end = std::chrono::steady_clock::now();
+	cout << "algo " << (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) / 1000. / 1000. << " s" << endl;
 	(cout << (std::accumulate(res.begin(), res.end(), 0)) << " " << g.size()) << endl;
 	assert(std::accumulate(res.begin(), res.end(), 0) == g.size()); //sanity check - holds only for connected graphs
 	return 0;
