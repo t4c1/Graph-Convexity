@@ -11,13 +11,14 @@
 #include <iostream>
 #include <chrono>
 #include <cstring>
+#include <climits>
 #include "algo.h"
 
 using namespace std;
 #define NO_VALUE -1
 
 
-SubGraph::SubGraph(vector<vector<int>>& network) :
+SubGraph::SubGraph(const vector<vector<int>>& network) :
 	present(vector<char>(network.size()))
 {}
 inline bool SubGraph::insert(int vertex) {
@@ -39,14 +40,6 @@ bool contains(vector<T>& vec, T& el) {
 	return false;
 }
 
-/*
-reads a network from a pajek (.net) file.
-fn: path to file.
-
-returns network (in adjecency list format)
-
-Reads network as undirected, even if it is saved as directed. Any multiedges are reduced to single edges.
-*/
 vector<vector<int>> readPajek(string fn) {
 	std::ifstream input(fn, std::ifstream::in);
 	if (!input.is_open()) {
@@ -82,9 +75,7 @@ vector<vector<int>> readPajek(string fn) {
 	}
 	return res;
 }
-/*
-reduces network to its largest connected component
-*/
+
 vector<vector<int>> reduceToLCC(const vector<vector<int>>& network) {
 	unordered_set<int> remaining_vertices;
 	remaining_vertices.reserve(network.size());
@@ -136,19 +127,17 @@ vector<vector<int>> reduceToLCC(const vector<vector<int>>& network) {
 	return res;
 }
 
-/*
-calculates distances between every pair of vertices in the given network.
-*/
 vector<vector<int>> distances(const vector<vector<int>>& network) {
-	vector<vector<int>> res;
-	res.reserve(network.size());
+	vector<vector<int>> res(network.size());
+	//res.reserve(network.size());
+	#pragma omp parallel for
 	for (int vertex = 0; vertex < network.size(); vertex++) {
 		vector<int> distances(network.size(), NO_VALUE);
 		distances[vertex] = 0;
 		deque<int> todo;
 		todo.push_back(vertex);
 		while (!todo.empty()) {
-			int current = todo.front(); //todo: try ref, pop after
+			int current = todo.front();
 			todo.pop_front();
 			for (int neighbor : network[current]) {
 				if (distances[neighbor] == NO_VALUE) {
@@ -157,22 +146,12 @@ vector<vector<int>> distances(const vector<vector<int>>& network) {
 				}
 			}
 		}
-		res.push_back(move(distances)); //todo: try skipping move
+		res[vertex]=move(distances);
 	}
-	return res;//todo move?
+	return res;
 }
 
-/*
-Grow a convex subgraph by specified vertex. Adds more vertices to make new subgraph connected.
-
-Than additional vertices are added to subgraph until its convexity is achieved. This is performed in O(ktot*m) time, where m is number of vertices in the subgraph and ktot is total degree of the vertices that are added.
-
-For each added vertex checks its neighbors if they lie on any shortest part between new wertex and vertices
-in existing subgraph. Adds such vertices to subgraph and repeats check for their neighbors.
-
-Returns vector with all aded vertices (including initial one) and updates SubGraph with new vertices.
-*/
-vector<int> convexGrowthTriangleIneq(vector<vector<int>>& network, vector<vector<int>>& distances, SubGraph& subGraph, int newVertex) {
+vector<int> convexGrowthTriangleIneq(const vector<vector<int>>& network, const vector<vector<int>>& distances, SubGraph& subGraph, int newVertex) {
 	deque<int> todo;
 	todo.push_back(newVertex);
 	vector<char> alreadyChecked(network.size());//elements initialized to 0
@@ -205,22 +184,7 @@ vector<int> convexGrowthTriangleIneq(vector<vector<int>>& network, vector<vector
 	return insertions;
 }
 
-/*
-Grow a convex subgraph by specified vertex. Adds more vertices to make new subgraph connected.
-
-Than additional vertices are added to subgraph until its convexity is achieved. This is performed in O(ktot*m) time, where m is number of vertices in the subgraph and ktot is total degree of the vertices that are added.
-
-For each added vertex performs a breadth first search starting at new vertex. Last discovered vertex of the subgraph determines maximum search depth - 
-search stops after there are no more vertices on equal distance. During search constructs directed acyclyc network of all shortest paths between new vertex and all discovered vertices.
-
-Than second breadth first search is run on this network of shortest paths starting on all vertices of the subgraph. All visited vertices are added to subgraph. Algorithm is then repeated for each added vertex.
-
-This function is faster than convexGrowthTriangleIneq only if distances are not precomputed and final size of subgraph is much smaller than original network. If subgraph is grown
-until it contains whole network computing distances and using convexGrowthTriangleIneq is faster.
-
-Returns vector with all added vertices (including initial one) and updates SubGraph with new vertices.
-*/
-vector<int> convexGrowthTwoSearch(vector<vector<int>>& network, SubGraph& subGraph, int newVertex) {
+vector<int> convexGrowthTwoSearch(const vector<vector<int>>& network, SubGraph& subGraph, int newVertex) {
 	if (subGraph.list.empty()) {
 		subGraph.insert(newVertex);
 		return{ newVertex };
@@ -281,19 +245,7 @@ vector<int> convexGrowthTwoSearch(vector<vector<int>>& network, SubGraph& subGra
 	return res;
 }
 
-/*
-Randomly grows a convex subgraph in given network.
-
-Initial vertex is chosen at random from all vertices in given network.
-
-In each step one vertex is chosen to be added to subgraph. It is picked randomly from vertices that have at least one neighbor in existing subgraph.
-Chance to select particular vertex is proportional to number of neighbors that are contained subgraph.
-Than convexGrowthTriangleIneq is called for new vertex.
-Growing subgraph until it contains all vertices of a network takes O(n*m) time, where n is number of vertices and m number of links in the network.
-
-returns vector of integers. At i-th place it contains number of vertices that were added in i-th step of convex growth.
-*/
-vector<int> convexGrowth(vector<vector<int>>& network, vector<vector<int>>& distances) {
+vector<int> convexGrowth(const vector<vector<int>>& network, const vector<vector<int>>& distances, int max_steps) {
 	SubGraph subGraph(network);
 	vector<int> neighbors;
 	std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
@@ -302,7 +254,11 @@ vector<int> convexGrowth(vector<vector<int>>& network, vector<vector<int>>& dist
 		neighbors.push_back(i);
 	}
 	vector<int> res;
-	while (!neighbors.empty()){
+	int step = 0;
+	for (int step = 0; step != max_steps; step++) {
+		if (neighbors.empty()) {
+			break;
+		}
 		std::uniform_int_distribution<int> distribution(0, neighbors.size()-1);
 		int newVertex = neighbors[distribution(generator)];
 		vector<int> insertions = convexGrowthTriangleIneq(network, distances, subGraph, newVertex);
@@ -324,4 +280,24 @@ vector<int> convexGrowth(vector<vector<int>>& network, vector<vector<int>>& dist
 		res.push_back(insertions.size());
 	}
 	return res;
+}
+
+double cConvexity_Xc(const vector<int>& growths, int n, double c) {
+	double res = 1.0;
+	for (double growth : growths) {
+		//cout << (growth - 1) / n <<"   "<< 1.0 / c << "    " << pow((growth - 1) / n, 1.0 / c) << endl;
+		res -= pow((growth - 1) / n, 1.0/c);
+	}
+	return res;
+}
+
+double maxConvexSubsetSize_Lc(const vector<int>& growths, double c) {
+	int t = 0;
+	for (double growth : growths) {
+		if (growth >= t + c + 1) {
+			break;
+		}
+		t++;
+	}
+	return t;
 }
