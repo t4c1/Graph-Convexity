@@ -55,6 +55,8 @@ An indicator vector. For each vertex in network vector contains one value. It is
 ##### `vector<int> list`
 A vector that contains all vertices of the subgraph.
 
+##### `insert(int vertex)`
+Adds a vertex to subgraph.
 
 ### `vector<vector<int>> readPajek(string fn)`
 reads a network from a pajek (.net) file.
@@ -73,7 +75,7 @@ Returns network consisiting of largest connected component of input.
 ### `vector<vector<int>> distances(const vector<vector<int>>& network)`
 Calculates distances between every pair of vertices in the given network. 
 
-The network must be undirected (a network returnd from readPajek is OK).
+The network must be undirected (a network returnd from readPajek will work).
 
 Returns distance matrix `D`. Distance between vertices i and j is in `D[i][j]` (and in `D[j][i]`).
 
@@ -86,7 +88,7 @@ is number of vertices in the subgraph and k<sub>tot</sub> is total degree of the
 For each added vertex checks its neighbors if they lie on any shortest part between new vertex and vertices
 in existing subgraph. Adds such vertices to subgraph and repeats check for their neighbors.
 
-Returns vector with all added vertices (including the initial one) and updates SubGraph with new vertices.
+Returns vector with all added vertices (including the initial one) and updates subGraph with new vertices.
 
 ### `vector<int> convexGrowthTwoSearch(const vector<vector<int>>& network, SubGraph& subGraph, int newVertex)`
 Grow a convex subgraph by specified vertex.
@@ -100,9 +102,9 @@ search stops after there are no more vertices on equal distance. During search c
 Than second breadth first search is run on this network of shortest paths starting on all vertices of the subgraph. All visited vertices are added to subgraph. Algorithm is then repeated for each added vertex.
 
 This function is faster than `convexGrowthTriangleIneq` only if distances are not precomputed and final size of subgraph is much smaller than original network. If subgraph is grown
-until it contains whole network, computing distances and using `convexGrowthTriangleIneq` is faster.
+until it contains whole network, computing distances and using `convexGrowthTriangleIneq` is much faster.
 
-Returns vector with all added vertices (including initial one) and updates SubGraph with new vertices.
+Returns vector with all added vertices (including initial one) and updates subGraph with new vertices.
 
 ### `vector<int> convexGrowth(const vector<vector<int>>& network, const vector<vector<int>>& distances, int max_steps)`
 Randomly grows a convex subgraph in given network. The network must be connected. If it is not run `reduceToLCC` on it first to get its largest connected component.
