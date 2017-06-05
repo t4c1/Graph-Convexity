@@ -3,12 +3,12 @@
 This repository contains an efficient implementation of an algorithm for growing [convex subgraph](https://en.wikipedia.org/wiki/Convex_subgraph) of a network.
 
 An induced subgraph is convex, if all shortest (geodesic) paths between vertices of the subgraph consist only of vertices of the subgraph.
-In other words no shortest path lies outside subgraph.
+In other words no shortest path lies outside the subgraph.
 
 We can grow convex subgraph by random neighboring vertex. We add specified vertex to subgraph, than check shortest paths between vertices of the new subgraph.
 Any vertices not in subgraph are added, than shortest paths are rechecked. Process is repeated until no new vertices are added to subgraph.
 
-This implementation calculate the number of vertices that were added to subraph in each step and also *c-convexity* and *maximum size of convex subsets* measures.
+This implementation can calculate the number of vertices that were added to subraph in each step and also *c-convexity* and *maximum size of convex subsets* measures.
 
 Further reading: [Convexity in complex networks](https://arxiv.org/pdf/1608.03402.pdf).
 
@@ -25,15 +25,15 @@ Example compiling comand line application using g++:
 # Command line usage
 `network-convexity input [repeats [max_steps [cGlobal [cLocal [rawOut]]]]]`
 
-input: path to pajek (.net) file, containing the network. This is the only mandatory parameter.
+`input`: path to pajek (.net) file, containing the network. This is the only mandatory parameter.
 
-repeats: number of repeats of algorithm. Since the algorithm is stohastic, larger values give more accurate results, but take more time to compute. Default is 100.
+`repeats`: number of repeats of the algorithm. Since the algorithm is stohastic, larger values give more accurate results, but take more time to compute. Default is 100.
 
-max_steps: Maximum number of steps the alghoritm will calculate. Default is -1, which means no limit.
+`max_steps`: Maximum number of steps the alghoritm will calculate. Default is -1, which means no limit.
 
-cGlobal: Parameter for calculation of *c-complexity*. Default is 1.
+`cGlobal`: Parameter for calculation of *c-convexity*. Default is 1.
 
-cLocal: Parameter for calculation of *maximum size of convex subsets*. Default is 1.
+`cLocal`: Parameter for calculation of *maximum size of convex subsets*. Default is 1.
 
 rawOut: path to file in which to save raw output in csv format. Each line represents one execution of the algorithm.
 i-th value in line is the number of nodes that were added to subgraph in i-th step (first two values in each line always equal to 1).
@@ -73,7 +73,7 @@ Returns network consisiting of largest connected component of input.
 ### `vector<vector<int>> distances(const vector<vector<int>>& network)`
 Calculates distances between every pair of vertices in the given network. 
 
-The network must be undirected (a network returnd from readPajek is OK).
+The network must be undirected (a network returned from readPajek is OK).
 
 Returns distance matrix `D`. Distance between vertices i and j is in `D[i][j]` (and in `D[j][i]`).
 
@@ -127,7 +127,8 @@ Calculates *c-convexity* of a network as defined in [Convexity in complex networ
 
 `c`: parameter of *c-convexity* measure.
 
-This function should be called on result of `convexGrowth`. For accurate results multiple return values of `cConvexity_Xc` should be averaged.
+This function should be called on result of `convexGrowth`. For accurate results `convexGrowth` should be run multiple times.
+`cConvexity_Xc` should be computed each time and return values should be averaged.
 
 
 ### `double maxConvexSubsetSize_Lc(const vector<int>& growths, double c = 1.0)`
@@ -137,4 +138,5 @@ Calculates maximum size of convex subsets of a network as defined in [Convexity 
 
 `c`: parameter of *maximum size of convex subsets* measure.
 
-This function should be called on result of `convexGrowth`. For accurate results multiple return values of `maxConvexSubsetSize_Lc` should be averaged.
+This function should be called on result of `convexGrowth`. For accurate results `convexGrowth` should be run multiple times.
+`maxConvexSubsetSize_Lc` should be computed each time and return values should be averaged.
