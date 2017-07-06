@@ -24,7 +24,9 @@ public:
 	bool insert(int vertex);
 };
 
-vector<vector<int>> readPajek(string fn);
+vector<vector<int>> readPajek(string fn, vector<string>* names=nullptr);
+
+void writePajek(string fn, vector<vector<int>> graph, vector<string> names);
 
 vector<vector<int>> reduceToLCC(const vector<vector<int>>& network);
 

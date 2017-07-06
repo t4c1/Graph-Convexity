@@ -40,20 +40,26 @@ bool contains(vector<T>& vec, T& el) {
 	return false;
 }
 
-vector<vector<int>> readPajek(string fn) {
-	std::ifstream input(fn, std::ifstream::in);
+vector<vector<int>> readPajek(string fn, vector<string>* names) {
+	ifstream input(fn, ifstream::in);
 	if (!input.is_open()) {
 		perror(fn.c_str());
 		exit(0);
 	}
 	vector<vector<int>> res;
-	char line[256];
-	input.getline(line, 256);
+	char line[1024];
+	input.getline(line, 1024);
 	int n = 0;
 	for( ; ;n++){
-		input.getline(line, 256);
+		input.getline(line, 1024);
 		if (line[0] == '*') {
 			break;
+		}
+		//int n;
+		//char name[1024];
+		//sscanf(line, "%d %s", &n, &name);
+		if(names!=nullptr) {
+			names->push_back(line);
 		}
 	}
 	res.resize(n,vector<int>());
@@ -74,6 +80,31 @@ vector<vector<int>> readPajek(string fn) {
 		}
 	}
 	return res;
+}
+
+void writePajek(string fn, vector<vector<int>> graph, vector<string> names) {
+	ofstream output(fn, ofstream::out);
+	if (!output.is_open()) {
+		perror(fn.c_str());
+		exit(0);
+	}
+	output << "*vertices " << graph.size() << endl;
+	int n = 0;
+	int m = 0;
+	for (string name: names) {
+		output << name.c_str() << endl;
+		m += graph[n].size();
+		n++;
+	}
+	output << "*edges " << m/2 << endl;
+	for (int vertex = 0; vertex < graph.size(); vertex++) {
+		for (int neighbor : graph[vertex]) {
+			if (vertex <= neighbor) { //each edge only once
+				output << vertex + 1 << " " << neighbor + 1 << endl; // pajek uses 1-based indexing
+			}
+		}
+	}
+	output.close();
 }
 
 vector<vector<int>> reduceToLCC(const vector<vector<int>>& network) {
