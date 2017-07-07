@@ -24,6 +24,9 @@ public:
 	bool insert(int vertex);
 };
 
+template <typename T>
+bool contains(const vector<T>& vec, T& el);
+
 vector<vector<int>> readPajek(string fn, vector<string>* names=nullptr);
 
 void writePajek(string fn, vector<vector<int>> graph, vector<string> names);

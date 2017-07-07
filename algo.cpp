@@ -31,8 +31,8 @@ inline bool SubGraph::insert(int vertex) {
 }
 
 template <typename T>
-bool contains(vector<T>& vec, T& el) {
-	for (T& i : vec) {
+bool contains(const vector<T>& vec, T& el) {
+	for (const T& i : vec) {
 		if (i == el) {
 			return true;
 		}
@@ -185,24 +185,19 @@ vector<vector<int>> distances(const vector<vector<int>>& network) {
 vector<int> convexGrowthTriangleIneq(const vector<vector<int>>& network, const vector<vector<int>>& distances, SubGraph& subGraph, int newVertex) {
 	deque<int> todo;
 	todo.push_back(newVertex);
-	vector<char> alreadyChecked(network.size());//elements initialized to 0
 	vector<int> insertions;
-	int check_n = 1;
-	alreadyChecked[newVertex] = check_n;
 	insertions.push_back(newVertex);
 	subGraph.insert(newVertex);
 	while (!todo.empty()) {
 		int current = todo.front();
 		todo.pop_front();
 		for (int neighbor : network[current]) {
-			if (alreadyChecked[neighbor]!=current && !subGraph.present[neighbor]) {
-				alreadyChecked[neighbor] = current;
+			if (!subGraph.present[neighbor]) {
 				for (int endVertex : subGraph.list) {
 					if (distances[current][endVertex] >= distances[current][neighbor] + distances[neighbor][endVertex]) {
 						todo.push_back(neighbor);
 						insertions.push_back(neighbor);
 						subGraph.insert(neighbor);
-						check_n++;
 						break;
 					}
 					else {
@@ -279,7 +274,8 @@ vector<int> convexGrowthTwoSearch(const vector<vector<int>>& network, SubGraph& 
 vector<int> convexGrowth(const vector<vector<int>>& network, const vector<vector<int>>& distances, int max_steps) {
 	SubGraph subGraph(network);
 	vector<int> neighbors;
-	std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+	long long rnd_init = 14994518116208229;// std::chrono::system_clock::now().time_since_epoch().count();
+	std::default_random_engine generator(rnd_init);
 	//std::default_random_engine generator(334);
 	for (int i = 0; i < network.size(); i++) {
 		neighbors.push_back(i);
